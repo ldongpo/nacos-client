@@ -61,8 +61,8 @@ func initInfo() {
 		{
 			IpAddr:      I.ServerHost,
 			ContextPath: "/nacos",
-			Port:        8848,
-			Scheme:      "http",
+			Port:        9848,
+			Scheme:      "tcp",
 		},
 	}
 
