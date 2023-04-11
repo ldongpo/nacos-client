@@ -1,4 +1,4 @@
-module github.com/ldongpo/nacos-client
+module github.com/ldongpo/nacos-client/v2
 
 go 1.16
 
