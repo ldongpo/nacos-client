@@ -1,6 +1,7 @@
 package nacosconfig
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
@@ -10,15 +11,25 @@ import (
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
+// 一些常量配置
+// @Author 东坡
+// @Description 具体参配置说明
+// @Date 11:17 AM 2023/4/12
+// @Param NacosApiHost 客户端不需要设置，如果需要更新配置内容，需要配置服务的api接口地址
+// @return
 const (
 	FN            = "application" //生成配置文件的名称
 	path          = "HOME"        //生成配置文件的根目录
 	pathDir       = "go-ns-config"
+	NacosApiHost  = "NACOS_API_HOST"                 //nacos api 服务地址
 	ServerHost    = "GO_NS_CONFIG_SERVER_HOST"       //服务端地址
 	showChangeLog = "GO_GRPC_CONFIG_SHOW_CHANGE_LOG" //是否显示文件修改提示
 )
@@ -133,7 +144,7 @@ func (c *Client) SetWatcher() error {
 			DataId: c.DataId,
 			Group:  c.Group,
 			OnChange: func(namespace, group, dataId, data string) {
-				fmt.Println("group:" + group + ", dataId:" + dataId + ", data:" + data)
+				//fmt.Println("group:" + group + ", dataId:" + dataId + ", data:" + data)
 				_ = ioutil.WriteFile(filepath.Join(c.Path, fmt.Sprintf("%s.%s", FN, c.ConfigType)), []byte(data), 0644)
 			},
 		})
@@ -147,6 +158,45 @@ func (c *Client) SetWatcher() error {
 		return err
 	}
 	return nil
+}
+
+// AddConfigs
+// @Author 东坡
+// @Description 更新内容
+// @Date 11:29 AM 2023/4/12
+// @Param
+// @return
+func (c *Client) AddConfigs(data string) (bool, error) {
+	if os.Getenv(NacosApiHost) == "" {
+		return false, errors.New("server api host cannot be empty")
+	}
+	apiUrl := os.Getenv(NacosApiHost) + "/nacos/v1/cs/configs"
+	postValue := url.Values{}
+	postValue.Set("tenant", c.NamespaceId)
+	postValue.Set("dataId", c.DataId)
+	postValue.Set("group", c.Group)
+	postValue.Set("content", data)
+	postValue.Set("type", c.ConfigType)
+	contentType := "application/x-www-form-urlencoded"
+	//参数，多个用&隔开
+	postData := strings.NewReader(postValue.Encode())
+
+	resp, err := http.Post(apiUrl, contentType, postData)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var res bool
+	err = json.Unmarshal(body, &res)
+	log.Println(res)
+	if err != nil {
+		return false, err
+	}
+	return res, nil
 }
 
 // NewViper
