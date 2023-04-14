@@ -32,6 +32,8 @@ const (
 	NacosApiHost  = "NACOS_API_HOST"                 //nacos api 服务地址
 	ServerHost    = "GO_NS_CONFIG_SERVER_HOST"       //服务端地址
 	showChangeLog = "GO_GRPC_CONFIG_SHOW_CHANGE_LOG" //是否显示文件修改提示
+	Username      = "NACOS_USERNAME"                 //用户名
+	Password      = "NACOS_PASSWORD"                 //密码
 )
 
 type Client struct {
@@ -42,8 +44,11 @@ type Client struct {
 	ServerHost    string
 	ShowChangeLog string
 	ConfigType    string //配置的类型，目前支持：json、yaml
-	v             *viper.Viper
-	ch            chan interface{}
+	Username      string //用户名
+	Password      string //密码
+
+	v  *viper.Viper
+	ch chan interface{}
 }
 
 // NewClient
@@ -78,6 +83,15 @@ func NewClient(namespaceId, dataId, group, configType string) (*Client, error) {
 	if os.Getenv(ServerHost) == "" {
 		return nil, errors.New("server host cannot be empty")
 	}
+
+	if os.Getenv(Username) != "" {
+		client.Username = os.Getenv(Username)
+	}
+
+	if os.Getenv(Password) != "" {
+		client.Password = os.Getenv(Username)
+	}
+
 	client.ServerHost = os.Getenv(ServerHost)
 
 	client.Path = filepath.Join(os.Getenv(path), pathDir, client.NamespaceId, client.DataId, client.Group, client.ConfigType)
@@ -106,6 +120,8 @@ func (c *Client) SetWatcher() error {
 		RotateTime:          "1h",
 		MaxAge:              3,
 		LogLevel:            "debug",
+		Username:            c.Username,
+		Password:            c.Password,
 	}
 
 	// 至少一个ServerConfig
