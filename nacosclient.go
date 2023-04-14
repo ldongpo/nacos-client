@@ -89,7 +89,7 @@ func NewClient(namespaceId, dataId, group, configType string) (*Client, error) {
 	}
 
 	if os.Getenv(Password) != "" {
-		client.Password = os.Getenv(Username)
+		client.Password = os.Getenv(Password)
 	}
 
 	client.ServerHost = os.Getenv(ServerHost)
