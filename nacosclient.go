@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/nacos-group/nacos-sdk-go/clients"
+	"github.com/nacos-group/nacos-sdk-go/clients/config_client"
 	"github.com/nacos-group/nacos-sdk-go/common/constant"
 	"github.com/nacos-group/nacos-sdk-go/vo"
 	"github.com/spf13/viper"
@@ -43,9 +44,10 @@ type Client struct {
 	Path          string
 	ServerHost    string
 	ShowChangeLog string
-	ConfigType    string //配置的类型，目前支持：json、yaml
-	Username      string //用户名
-	Password      string //密码
+	ConfigType    string                      //配置的类型，目前支持：json、yaml
+	Username      string                      //用户名
+	Password      string                      //密码
+	ConfigClient  config_client.IConfigClient //客户端实例
 
 	v  *viper.Viper
 	ch chan interface{}
@@ -135,17 +137,20 @@ func (c *Client) SetWatcher() error {
 	}
 
 	// 创建动态配置客户端的另一种方式 (推荐)
+	var err error
 	configClient, err := clients.NewConfigClient(
 		vo.NacosClientParam{
 			ClientConfig:  &clientConfig,
 			ServerConfigs: serverConfigs,
 		},
 	)
+	c.ConfigClient = configClient
+
 	if err != nil {
 		log.Printf("configClient err: %v", err)
 		return err
 	}
-	content, err := configClient.GetConfig(vo.ConfigParam{
+	content, err := c.ConfigClient.GetConfig(vo.ConfigParam{
 		DataId: c.DataId,
 		Group:  c.Group})
 	//先获取一次数据
@@ -156,7 +161,7 @@ func (c *Client) SetWatcher() error {
 		return err
 	}
 	go func() {
-		err = configClient.ListenConfig(vo.ConfigParam{
+		err = c.ConfigClient.ListenConfig(vo.ConfigParam{
 			DataId: c.DataId,
 			Group:  c.Group,
 			OnChange: func(namespace, group, dataId, data string) {
@@ -176,9 +181,31 @@ func (c *Client) SetWatcher() error {
 	return nil
 }
 
+// Publish
+// @Author 东坡
+// @Description 发布配置 客户端已经配了用户验证
+// @Date 2:46 PM 2023/4/18
+// @Param
+// @return
+func (c *Client) Publish(data string) (bool, error) {
+	param := vo.ConfigParam{
+		DataId:  c.DataId,
+		Group:   c.Group,
+		Content: data,
+		Type:    vo.YAML,
+	}
+	resp, err := c.ConfigClient.PublishConfig(param)
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	return resp, nil
+}
+
 // AddConfigs
 // @Author 东坡
-// @Description 更新内容
+// @Description 发布配置 接口形式，用于没有权限的场景
 // @Date 11:29 AM 2023/4/12
 // @Param
 // @return
