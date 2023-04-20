@@ -119,9 +119,7 @@ func (c *Client) SetWatcher() error {
 		NotLoadCacheAtStart: true,
 		LogDir:              "/tmp/nacos/log",
 		CacheDir:            "/tmp/nacos/cache",
-		RotateTime:          "1h",
-		MaxAge:              3,
-		LogLevel:            "debug",
+		LogLevel:            "info",
 		Username:            c.Username,
 		Password:            c.Password,
 	}
